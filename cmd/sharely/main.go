@@ -23,7 +23,7 @@ import (
 	"github.com/TaxCollector23/sharely/internal/sharing"
 )
 
-const version = "0.1.1"
+const version = "0.1.2"
 
 func main() {
 	args := os.Args[1:]
@@ -53,6 +53,11 @@ func main() {
 			fail("Usage: sharely logs <id>")
 		}
 		runLogs(args[1])
+	case "qr":
+		if len(args) < 2 {
+			fail("Usage: sharely qr <id>")
+		}
+		runQR(args[1])
 	case "start":
 		// `sharely start` is the explicit, discoverable spelling of
 		// `sharely [path]`: cd into a folder, run `sharely start`, get a

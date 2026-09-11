@@ -37,7 +37,7 @@ export function Header() {
           </a>
           <a
             href="#install"
-            className="rounded-md bg-[var(--accent)] px-3.5 py-1.5 text-sm font-medium text-[var(--accent-text-on)] transition-colors hover:bg-[var(--accent-hover)]"
+            className="rounded-md bg-[var(--accent)] px-3.5 py-2.5 text-sm font-medium text-[var(--accent-text-on)] transition-colors hover:bg-[var(--accent-hover)]"
           >
             Get Sharely
           </a>

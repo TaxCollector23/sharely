@@ -12,6 +12,7 @@ import (
 
 	"github.com/TaxCollector23/sharely/internal/discovery"
 	"github.com/TaxCollector23/sharely/internal/network"
+	"github.com/TaxCollector23/sharely/internal/qr"
 )
 
 func fileExists(p string) bool {
@@ -87,14 +88,15 @@ func runList() {
 	if !daemonReachable() {
 		fmt.Println("Nothing is being shared.")
 		fmt.Println()
-		fmt.Println("Run `sharely` from a folder to get started.")
+		fmt.Println("Run `sharely start` from a folder to get started.")
 		return
 	}
 	var shares []struct {
-		ID        string `json:"id"`
-		Name      string `json:"name"`
-		Status    string `json:"status"`
-		Remaining string `json:"remaining"`
+		ID         string `json:"id"`
+		Name       string `json:"name"`
+		Status     string `json:"status"`
+		Remaining  string `json:"remaining"`
+		PrimaryURL string `json:"primaryUrl"`
 	}
 	if err := apiGet("/api/shares", &shares); err != nil {
 		fail(err.Error())
@@ -112,7 +114,7 @@ func runList() {
 	fmt.Println("Active shares")
 	fmt.Println()
 	for _, s := range active {
-		fmt.Printf("%-12s %-16s %s\n", s.ID, truncate(s.Name, 16), s.Remaining)
+		fmt.Printf("%-10s %-14s %-28s %s\n", s.ID, truncate(s.Name, 14), s.PrimaryURL, s.Remaining)
 	}
 }
 
@@ -181,6 +183,30 @@ func runLogs(id string) {
 	}
 }
 
+// runQR reprints the link and terminal QR code for an already-running
+// share — handy after scrolling past it, after `--quiet`, or from a second
+// terminal that didn't create the share itself.
+func runQR(id string) {
+	if !daemonReachable() {
+		fail("Sharely isn't running.")
+	}
+	var share struct {
+		PrimaryURL string `json:"primaryUrl"`
+		Remaining  string `json:"remaining"`
+	}
+	if err := apiGet("/api/shares/"+id, &share); err != nil {
+		fail("No active share named \"" + id + "\".")
+	}
+	fmt.Println()
+	fmt.Printf("  %s\n\n", share.PrimaryURL)
+	fmt.Printf("  %s\n\n", share.Remaining)
+	art, err := qr.Terminal(share.PrimaryURL)
+	if err == nil {
+		fmt.Println(art)
+	}
+	fmt.Println("  Scan to open")
+}
+
 func runDoctor() {
 	fmt.Println("Sharely diagnostics")
 	fmt.Println()
@@ -230,6 +256,7 @@ Usage:
   sharely start [path]     Share a folder (defaults to the current one)
   sharely [path]           Same thing — "start" is just the explicit form
   sharely list             See what's currently shared
+  sharely qr <id>          Reprint the link and QR code for a share
   sharely stop <id>        Stop one share
   sharely stop-all         Stop everything
   sharely logs <id>        Recent requests for a share

@@ -125,7 +125,7 @@ export function ShareCard({ share, onShowQr, onChanged }: ShareCardProps) {
         <Button
           variant="secondary"
           size="sm"
-          className="h-7 shrink-0 gap-1.5 px-2.5 text-xs"
+          className="h-10 shrink-0 gap-1.5 px-3 text-xs"
           onClick={copyLink}
         >
           <Copy className="size-3.5" aria-hidden="true" />

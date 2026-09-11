@@ -30,13 +30,13 @@ export function QrDialog({ share, onOpenChange }: QrDialogProps) {
           <DialogTitle>{share.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex justify-center rounded-md border border-border bg-white p-4">
+        <div className="flex min-w-0 justify-center rounded-md border border-border bg-white p-4">
           <img
             src={api.qrSvgUrl(share.id)}
             alt={`QR code for ${share.primaryUrl}`}
             width={280}
             height={280}
-            className="h-auto w-full max-w-[280px]"
+            className="h-auto w-full max-w-[280px] min-w-0"
           />
         </div>
 
@@ -47,7 +47,7 @@ export function QrDialog({ share, onOpenChange }: QrDialogProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 shrink-0"
+            className="size-10 shrink-0"
             onClick={copyLink}
             aria-label="Copy link"
           >
@@ -56,7 +56,7 @@ export function QrDialog({ share, onOpenChange }: QrDialogProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 shrink-0"
+            className="size-10 shrink-0"
             asChild
           >
             <a

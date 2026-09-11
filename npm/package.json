@@ -1,13 +1,20 @@
 {
   "name": "sharely-cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Share what's on your machine — a local-first CLI for sharing files, folders, and local sites over your network.",
-  "keywords": ["cli", "lan", "share", "file-sharing", "local-first", "dev-tools"],
+  "keywords": [
+    "cli",
+    "lan",
+    "share",
+    "file-sharing",
+    "local-first",
+    "dev-tools"
+  ],
   "license": "MIT",
   "homepage": "https://github.com/TaxCollector23/sharely",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TaxCollector23/sharely.git"
+    "url": "git+https://github.com/TaxCollector23/sharely.git"
   },
   "bugs": "https://github.com/TaxCollector23/sharely/issues",
   "bin": {
@@ -25,5 +32,8 @@
   "engines": {
     "node": ">=16"
   },
-  "os": ["darwin", "linux"]
+  "os": [
+    "darwin",
+    "linux"
+  ]
 }
