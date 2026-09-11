@@ -23,7 +23,7 @@ import (
 	"github.com/TaxCollector23/sharely/internal/sharing"
 )
 
-const version = "0.1.3"
+const version = "0.1.4"
 
 func main() {
 	args := os.Args[1:]
@@ -170,16 +170,18 @@ func runShare(args []string) {
 }
 
 type shareResult struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Type        string  `json:"type"`
-	URL         string  `json:"url"`
-	PrimaryURL  string  `json:"primaryUrl"`
-	Remaining   string  `json:"remaining"`
-	HasPassword bool    `json:"hasPassword"`
-	Duration    string  `json:"duration"`
-	NetworkAddr string  `json:"networkAddress"`
-	Password    *string `json:"-"`
+	ID            string  `json:"id"`
+	Name          string  `json:"name"`
+	Target        string  `json:"target"`
+	Type          string  `json:"type"`
+	URL           string  `json:"url"`
+	PrimaryURL    string  `json:"primaryUrl"`
+	Remaining     string  `json:"remaining"`
+	HasPassword   bool    `json:"hasPassword"`
+	Duration      string  `json:"duration"`
+	NetworkAddr   string  `json:"networkAddress"`
+	LocalHostname string  `json:"localHostname"`
+	Password      *string `json:"-"`
 }
 
 func runAsClient(f shareFlags) {
@@ -217,6 +219,21 @@ func runAsClient(f shareFlags) {
 	}
 
 	printReady(f, res, reachable, fallbackURL)
+	if f.verbose {
+		passwordLabel := "disabled"
+		if res.HasPassword {
+			passwordLabel = "enabled"
+		}
+		printVerboseDetails([][2]string{
+			{"Share ID", res.ID},
+			{"Type", res.Type},
+			{"Target", res.Target},
+			{"Content address", res.NetworkAddr},
+			{"Local hostname", nonEmpty(res.LocalHostname, "(unavailable, using LAN address)")},
+			{"Password", passwordLabel},
+			{"Duration", res.Duration},
+		})
+	}
 	if f.open {
 		openBrowser(res.PrimaryURL)
 	}
@@ -413,6 +430,27 @@ func runAsDaemon(f shareFlags) {
 	if !f.quiet {
 		fmt.Printf("\n  Dashboard   http://%s\n", controlAddr)
 	}
+	if f.verbose {
+		expiresLabel := "never (until stopped)"
+		if s.ExpiresAt != nil {
+			expiresLabel = s.ExpiresAt.Format("15:04:05 MST")
+		}
+		passwordLabel := "disabled"
+		if s.HasPassword {
+			passwordLabel = "enabled"
+		}
+		printVerboseDetails([][2]string{
+			{"Share ID", s.ID},
+			{"Type", string(s.Type)},
+			{"Root directory", s.RootDir},
+			{"Network", ifaceLabel},
+			{"Content address", contentAddr},
+			{"Control address", controlAddr},
+			{"Local hostname", nonEmpty(localName, "(unavailable, using LAN address)")},
+			{"Password", passwordLabel},
+			{"Expires", expiresLabel},
+		})
+	}
 	if f.open {
 		openBrowser(res.PrimaryURL)
 	}
@@ -489,6 +527,22 @@ func nonEmpty(v, fallback string) string {
 		return fallback
 	}
 	return v
+}
+
+// printVerboseDetails prints the technical details --verbose promises,
+// which until now the flag silently ignored — it parsed but did nothing.
+func printVerboseDetails(rows [][2]string) {
+	fmt.Println()
+	fmt.Println("  Details")
+	width := 0
+	for _, r := range rows {
+		if len(r[0]) > width {
+			width = len(r[0])
+		}
+	}
+	for _, r := range rows {
+		fmt.Printf("    %-*s  %s\n", width, r[0], r[1])
+	}
 }
 
 // splitHostPortInt parses "host:port" for a reachability check. ok is false
