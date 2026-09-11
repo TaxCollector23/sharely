@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -234,18 +235,33 @@ func clientPassword(f shareFlags) string {
 }
 
 func promptPassword() string {
-	fmt.Print("Set a password for this share: ")
+	// Always stderr, never stdout — stdout is reserved for the share link
+	// itself (especially in --quiet mode, where scripts pipe it straight
+	// into another command and can't tolerate a stray prompt line).
+	fmt.Fprint(os.Stderr, "Set a password for this share: ")
 	var pw string
 	fmt.Scanln(&pw)
 	return pw
 }
 
+// targetOrCwd resolves the user's target argument to an absolute path in
+// THIS process, before it ever crosses a process boundary. This matters
+// specifically for client mode (runAsClient): the daemon that ultimately
+// creates the share may be running with a completely different working
+// directory (it could have been started from another terminal, sharing a
+// different folder, minutes or hours earlier), so a relative path like
+// "report.pdf" must never be sent over the wire as-is — the daemon would
+// resolve it against ITS OWN cwd and fail with a confusing "does not
+// exist" error even though the file is sitting right in front of the user.
 func targetOrCwd(t string) string {
 	if t == "" {
 		if wd, err := os.Getwd(); err == nil {
 			return wd
 		}
 		return "."
+	}
+	if abs, err := filepath.Abs(t); err == nil {
+		return abs
 	}
 	return t
 }
