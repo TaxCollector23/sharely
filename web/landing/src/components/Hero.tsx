@@ -57,6 +57,11 @@ export function Hero() {
             </a>
           </div>
 
+          <p className="mt-4 text-[13px] text-[var(--text-faint)]">
+            <code className="font-mono">npm install -g sharely-cli</code> or{' '}
+            <code className="font-mono">go install .../cmd/sharely@latest</code>
+          </p>
+
           <div className="mt-10 flex flex-wrap items-center gap-x-2 gap-y-2 text-[13px] text-[var(--text-faint)]">
             <span className="rounded border border-[var(--border)] px-2 py-1 font-mono">
               cd my-project

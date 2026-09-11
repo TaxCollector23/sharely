@@ -39,6 +39,8 @@ Or with npm (still builds the real binary from source via Go under the hood — 
 npm install -g sharely-cli
 ```
 
+If that leaves you with a `sharely` command that errors saying the binary wasn't built, your npm blocked the install script that compiles it (common on npm 10+): run `npm install -g --allow-scripts=sharely-cli sharely-cli` instead, or just use the `go install` command above, which never depends on npm's script policy.
+
 Or from a clone:
 
 ```bash

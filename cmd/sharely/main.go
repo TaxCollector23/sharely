@@ -23,7 +23,7 @@ import (
 	"github.com/TaxCollector23/sharely/internal/sharing"
 )
 
-const version = "0.1.2"
+const version = "0.1.3"
 
 func main() {
 	args := os.Args[1:]
@@ -33,6 +33,10 @@ func main() {
 	}
 
 	switch args[0] {
+	case mdnsSubcommand:
+		// Internal-only: see mdns_child.go for why this runs as its own
+		// process instead of inside the daemon.
+		runMDNSChild(args[1:])
 	case "help", "-h", "--help":
 		printHelp()
 	case "version", "-v", "--version":
@@ -309,15 +313,21 @@ func runAsDaemon(f shareFlags) {
 	// Linux, multicast blocked by a firewall, a restrictive network
 	// profile, etc.) — printing an unverified hostname is exactly the
 	// "pretty but broken link" failure Sharely must never produce.
+	//
+	// The responder itself runs as a separate OS process (startMDNSAdvertiser,
+	// see mdns_child.go): it parses arbitrary real mDNS traffic from every
+	// device on the LAN, and isolating it means nothing it does — including
+	// crashing outright — can ever take the actual file-sharing server down
+	// with it.
 	localName := ""
-	var stopDiscovery func()
+	var mdnsProc *mdnsProcess
 	if ip := parseIP(lanIP); ip != nil {
-		if stop, err := discovery.Advertise(ip); err == nil {
-			// Keep the responder running either way — a phone or another
-			// computer on the LAN may resolve "sharely.local" fine even
-			// when this machine's own resolver can't. We only gate
-			// whether WE trust it enough to print as the primary link.
-			stopDiscovery = stop
+		if proc, err := startMDNSAdvertiser(lanIP); err == nil {
+			mdnsProc = proc
+			// Give the child a brief moment to bind before checking whether
+			// this machine can resolve it — startup is near-instant in
+			// practice, and Verify()'s own timeout absorbs the rest.
+			time.Sleep(100 * time.Millisecond)
 			if discovery.Verify() {
 				localName = config.LocalHostname
 			}
@@ -411,9 +421,7 @@ func runAsDaemon(f shareFlags) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	<-sig
-	if stopDiscovery != nil {
-		stopDiscovery()
-	}
+	mdnsProc.Stop()
 	mgr.StopAll()
 	srv.Shutdown()
 	if !f.quiet {
