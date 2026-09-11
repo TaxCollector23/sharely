@@ -27,13 +27,27 @@ Sharing  my-project
 
 ## Install
 
+With Go 1.22+:
+
+```bash
+go install github.com/TaxCollector23/sharely/cmd/sharely@latest
+```
+
+Or with npm (still builds the real binary from source via Go under the hood — see [`npm/`](npm/)):
+
+```bash
+npm install -g sharely-cli
+```
+
+Or from a clone:
+
 ```bash
 go build -o sharely ./cmd/sharely
 ```
 
-That's it — the dashboard is compiled into the binary (see [Development](#development) if you're changing the dashboard itself), so the result is a single self-contained executable with no separate assets to ship.
+Either way you get a single self-contained executable — the dashboard is compiled directly into the binary via `go:embed`, so there's no separate asset directory to ship or lose track of.
 
-(A Homebrew formula and prebuilt binaries are planned; for now build from source with Go 1.22+.)
+(A Homebrew formula and prebuilt binaries for a Go-free install are planned.)
 
 ## Quick start
 

@@ -14,3 +14,7 @@ web/landing/dist/
 # OS
 .DS_Store
 .claude/
+
+# npm wrapper: built locally at install time, never committed
+npm/bin/
+npm/*.tgz
