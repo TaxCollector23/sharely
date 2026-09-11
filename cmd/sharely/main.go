@@ -23,7 +23,7 @@ import (
 	"github.com/TaxCollector23/sharely/internal/sharing"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 func main() {
 	args := os.Args[1:]
