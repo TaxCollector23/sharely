@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+:root {
+  --bg: #fafaf9;
+  --bg-raised: #ffffff;
+  --bg-sunken: #f0efec;
+  --text: #18181b;
+  --text-muted: #52525b;
+  --text-faint: #8a8a92;
+  --border: #e4e4e0;
+  --border-strong: #d1d1cb;
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --accent-soft: #eef2ff;
+  --accent-text-on: #ffffff;
+  --terminal-bg: #16161a;
+  --terminal-text: #e4e4e7;
+  --terminal-muted: #7c7c85;
+  --terminal-accent: #5eead4;
+  --code-bg: #f0efec;
+  --code-border: #e4e4e0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101012;
+    --bg-raised: #17171a;
+    --bg-sunken: #0b0b0c;
+    --text: #f2f2f0;
+    --text-muted: #a6a6ad;
+    --text-faint: #75757e;
+    --border: #27272a;
+    --border-strong: #34343a;
+    --accent: #5b8def;
+    --accent-hover: #7ba3f2;
+    --accent-soft: #16233f;
+    --accent-text-on: #0b0f1a;
+    --terminal-bg: #0a0a0c;
+    --terminal-text: #e4e4e7;
+    --terminal-muted: #6f6f79;
+    --terminal-accent: #5eead4;
+    --code-bg: #18181b;
+    --code-border: #2a2a2e;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #101012;
+  --bg-raised: #17171a;
+  --bg-sunken: #0b0b0c;
+  --text: #f2f2f0;
+  --text-muted: #a6a6ad;
+  --text-faint: #75757e;
+  --border: #27272a;
+  --border-strong: #34343a;
+  --accent: #5b8def;
+  --accent-hover: #7ba3f2;
+  --accent-soft: #16233f;
+  --accent-text-on: #0b0f1a;
+  --terminal-bg: #0a0a0c;
+  --terminal-text: #e4e4e7;
+  --terminal-muted: #6f6f79;
+  --terminal-accent: #5eead4;
+  --code-bg: #18181b;
+  --code-border: #2a2a2e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+code,
+pre,
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+a {
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

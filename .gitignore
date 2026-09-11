@@ -1,0 +1,16 @@
+/sharely
+/bin/
+*.test
+
+# Node / web
+node_modules/
+.vite/
+web/landing/dist/
+
+# web/dashboard/dist is intentionally NOT ignored: it's go:embed'd into the
+# sharely binary (see web/dashboard/embed.go) so a plain `go build` produces
+# a fully self-contained executable without a Node toolchain at install time.
+
+# OS
+.DS_Store
+.claude/
