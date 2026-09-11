@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"sharely/internal/mimekind"
-	"sharely/internal/proxy"
-	"sharely/internal/security"
-	"sharely/internal/sharing"
+	"github.com/TaxCollector23/sharely/internal/mimekind"
+	"github.com/TaxCollector23/sharely/internal/proxy"
+	"github.com/TaxCollector23/sharely/internal/security"
+	"github.com/TaxCollector23/sharely/internal/sharing"
 )
 
 // ContentHandler serves the LAN-facing side of Sharely: /<shareID>/<path>.

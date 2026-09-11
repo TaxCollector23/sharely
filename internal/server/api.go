@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"sharely/internal/qr"
-	"sharely/internal/sharing"
+	"github.com/TaxCollector23/sharely/internal/qr"
+	"github.com/TaxCollector23/sharely/internal/sharing"
 )
 
 // APIHandler implements the loopback-only control plane: the dashboard UI

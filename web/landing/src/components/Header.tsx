@@ -30,7 +30,7 @@ export function Header() {
         </nav>
         <div className="flex items-center gap-3">
           <a
-            href="#"
+            href="https://github.com/TaxCollector23/sharely" target="_blank" rel="noreferrer"
             className="hidden text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)] sm:inline"
           >
             GitHub

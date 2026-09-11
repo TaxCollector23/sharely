@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"sharely/internal/discovery"
-	"sharely/internal/network"
+	"github.com/TaxCollector23/sharely/internal/discovery"
+	"github.com/TaxCollector23/sharely/internal/network"
 )
 
 func fileExists(p string) bool {

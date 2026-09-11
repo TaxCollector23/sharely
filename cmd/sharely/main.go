@@ -14,12 +14,12 @@ import (
 	"syscall"
 	"time"
 
-	"sharely/internal/config"
-	"sharely/internal/discovery"
-	"sharely/internal/network"
-	"sharely/internal/qr"
-	"sharely/internal/server"
-	"sharely/internal/sharing"
+	"github.com/TaxCollector23/sharely/internal/config"
+	"github.com/TaxCollector23/sharely/internal/discovery"
+	"github.com/TaxCollector23/sharely/internal/network"
+	"github.com/TaxCollector23/sharely/internal/qr"
+	"github.com/TaxCollector23/sharely/internal/server"
+	"github.com/TaxCollector23/sharely/internal/sharing"
 )
 
 const version = "0.1.0"

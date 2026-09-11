@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"sharely/internal/sharing"
+	"github.com/TaxCollector23/sharely/internal/sharing"
 )
 
 func newTestHandler(t *testing.T) (*ContentHandler, *sharing.Manager, string) {

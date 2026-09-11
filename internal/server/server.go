@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"sharely/internal/sharing"
-	dashboard "sharely/web/dashboard"
+	"github.com/TaxCollector23/sharely/internal/sharing"
+	dashboard "github.com/TaxCollector23/sharely/web/dashboard"
 )
 
 // Server wires the two listeners Sharely runs: the LAN-facing content

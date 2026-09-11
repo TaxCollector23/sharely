@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"sharely/internal/config"
-	"sharely/internal/sharing"
+	"github.com/TaxCollector23/sharely/internal/config"
+	"github.com/TaxCollector23/sharely/internal/sharing"
 
 	"golang.org/x/crypto/bcrypt"
 )

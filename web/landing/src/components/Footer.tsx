@@ -10,7 +10,7 @@ export function Footer() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <a href="#" className="transition-colors hover:text-[var(--text)]">
+          <a href="https://github.com/TaxCollector23/sharely" target="_blank" rel="noreferrer" className="transition-colors hover:text-[var(--text)]">
             GitHub
           </a>
           <span>License: MIT</span>

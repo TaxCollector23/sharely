@@ -1,4 +1,4 @@
-module sharely
+module github.com/TaxCollector23/sharely
 
 go 1.27.1
 

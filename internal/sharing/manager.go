@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"sharely/internal/names"
+	"github.com/TaxCollector23/sharely/internal/names"
 
 	"golang.org/x/crypto/bcrypt"
 )

@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"sharely/internal/mimekind"
+	"github.com/TaxCollector23/sharely/internal/mimekind"
 )
 
 type entryRow struct {
