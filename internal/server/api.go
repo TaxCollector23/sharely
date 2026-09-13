@@ -22,6 +22,7 @@ type APIHandler struct {
 	Interface   string // e.g. "Wi-Fi (en0)"
 	StartedAt   time.Time
 	Version     string
+	Shutdown    func()
 }
 
 type shareDTO struct {
@@ -85,7 +86,26 @@ func (h *APIHandler) Routes() http.Handler {
 	mux.HandleFunc("/api/shares", h.handleShares)
 	mux.HandleFunc("/api/shares/", h.handleShareByID)
 	mux.HandleFunc("/api/status", h.handleStatus)
+	mux.HandleFunc("/api/shutdown", h.handleShutdown)
 	return mux
+}
+
+func (h *APIHandler) handleShutdown(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// Requiring JSON makes a cross-origin HTML form unable to stop the local
+	// service; scripted cross-origin requests are blocked by the browser's
+	// preflight because this control server never enables CORS.
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		http.Error(w, "content type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"stopping": true})
+	if h.Shutdown != nil {
+		go h.Shutdown()
+	}
 }
 
 func (h *APIHandler) handleStatus(w http.ResponseWriter, r *http.Request) {

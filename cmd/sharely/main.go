@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strconv"
@@ -21,9 +23,12 @@ import (
 	"github.com/TaxCollector23/sharely/internal/qr"
 	"github.com/TaxCollector23/sharely/internal/server"
 	"github.com/TaxCollector23/sharely/internal/sharing"
+	"golang.org/x/term"
 )
 
-const version = "0.1.4"
+const version = "0.2.0"
+
+const daemonSubcommand = "__daemon"
 
 func main() {
 	args := os.Args[1:]
@@ -37,12 +42,22 @@ func main() {
 		// Internal-only: see mdns_child.go for why this runs as its own
 		// process instead of inside the daemon.
 		runMDNSChild(args[1:])
+	case daemonSubcommand:
+		f, err := parseShareFlags(args[1:])
+		if err != nil {
+			fail(err.Error())
+		}
+		runDaemon(f)
 	case "help", "-h", "--help":
 		printHelp()
 	case "version", "-v", "--version":
 		fmt.Println("sharely " + version)
 	case "list":
 		runList()
+	case "status":
+		runList()
+	case "dashboard":
+		runDashboard()
 	case "stop":
 		if len(args) < 2 {
 			fail("Usage: sharely stop <id>")
@@ -90,40 +105,64 @@ type shareFlags struct {
 	verbose  bool
 }
 
-func parseShareFlags(args []string) shareFlags {
+func parseShareFlags(args []string) (shareFlags, error) {
 	f := shareFlags{expires: "1h"}
 	var positional []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch {
-		case a == "--port" && i+1 < len(args):
+		case a == "--port":
+			if i+1 >= len(args) {
+				return f, fmt.Errorf("--port needs a number")
+			}
 			i++
 			p, err := strconv.Atoi(args[i])
-			if err == nil {
-				f.port = p
+			if err != nil || p < 1 || p > 65535 {
+				return f, fmt.Errorf("invalid port %q (use 1-65535)", args[i])
 			}
-		case a == "--host" && i+1 < len(args):
+			f.port = p
+		case a == "--host":
+			if i+1 >= len(args) {
+				return f, fmt.Errorf("--host needs an IP address")
+			}
 			i++
+			if ip := net.ParseIP(args[i]); ip == nil || ip.To4() == nil {
+				return f, fmt.Errorf("invalid host %q (use an IPv4 address)", args[i])
+			}
 			f.host = args[i]
 		case a == "--password":
 			f.password = true
-		case a == "--expires" && i+1 < len(args):
+		case a == "--expires":
+			if i+1 >= len(args) {
+				return f, fmt.Errorf("--expires needs 15m, 1h, 4h, or until-stopped")
+			}
 			i++
 			f.expires = normalizeExpires(args[i])
+			if f.expires != "15m" && f.expires != "1h" && f.expires != "4h" && f.expires != "forever" {
+				return f, fmt.Errorf("invalid expiration %q (use 15m, 1h, 4h, or until-stopped)", args[i])
+			}
 		case a == "--open":
 			f.open = true
 		case a == "--quiet":
 			f.quiet = true
 		case a == "--verbose":
 			f.verbose = true
+		case a == "--help" || a == "-h":
+			printHelp()
+			os.Exit(0)
+		case strings.HasPrefix(a, "-"):
+			return f, fmt.Errorf("unknown option %q\nRun `sharely help` to see available options.", a)
 		default:
 			positional = append(positional, a)
 		}
 	}
+	if len(positional) > 1 {
+		return f, fmt.Errorf("sharely accepts one file or folder at a time")
+	}
 	if len(positional) > 0 {
 		f.target = positional[0]
 	}
-	return f
+	return f, nil
 }
 
 func normalizeExpires(v string) string {
@@ -148,7 +187,7 @@ func controlBaseURL() string {
 }
 
 func daemonReachable() bool {
-	client := http.Client{Timeout: 400 * time.Millisecond}
+	client := localHTTPClient(400 * time.Millisecond)
 	resp, err := client.Get(controlBaseURL() + "/api/status")
 	if err != nil {
 		return false
@@ -160,13 +199,23 @@ func daemonReachable() bool {
 // ---- sharely <target> ---------------------------------------------------
 
 func runShare(args []string) {
-	f := parseShareFlags(args)
-
-	if daemonReachable() {
-		runAsClient(f)
-		return
+	f, err := parseShareFlags(args)
+	if err != nil {
+		fail(err.Error())
 	}
-	runAsDaemon(f)
+	// Resolve in the invoking process so bad paths fail immediately and
+	// relative paths are never interpreted against the daemon's directory.
+	f.target = targetOrCwd(f.target)
+	if _, err := sharing.Resolve(f.target); err != nil {
+		fail(err.Error())
+	}
+
+	if !daemonReachable() {
+		if err := startDaemon(f); err != nil {
+			fail(err.Error())
+		}
+	}
+	runAsClient(f)
 }
 
 type shareResult struct {
@@ -190,7 +239,8 @@ func runAsClient(f shareFlags) {
 		"duration": f.expires,
 		"password": clientPassword(f),
 	})
-	resp, err := http.Post(controlBaseURL()+"/api/shares", "application/json", bytes.NewReader(body))
+	client := localHTTPClient(3 * time.Second)
+	resp, err := client.Post(controlBaseURL()+"/api/shares", "application/json", bytes.NewReader(body))
 	if err != nil {
 		fail("Sharely is running, but couldn't be reached. Try `sharely doctor`.")
 	}
@@ -244,13 +294,25 @@ func runAsClient(f shareFlags) {
 // Sharely's rule that a pretty-but-broken URL is worse than an honest
 // warning.
 func httpReachable(url string) bool {
-	client := http.Client{Timeout: 700 * time.Millisecond}
+	client := localHTTPClient(900 * time.Millisecond)
 	resp, err := client.Get(url)
 	if err != nil {
 		return false
 	}
 	resp.Body.Close()
 	return resp.StatusCode < 500
+}
+
+// localHTTPClient deliberately ignores HTTP_PROXY. Sharely only probes local
+// addresses; routing a private LAN URL through a corporate proxy can produce a
+// false "not responding" warning even while the share works perfectly.
+func localHTTPClient(timeout time.Duration) http.Client {
+	return http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			Proxy: nil,
+		},
+	}
 }
 
 func clientPassword(f shareFlags) string {
@@ -265,8 +327,21 @@ func promptPassword() string {
 	// itself (especially in --quiet mode, where scripts pipe it straight
 	// into another command and can't tolerate a stray prompt line).
 	fmt.Fprint(os.Stderr, "Set a password for this share: ")
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		pw, err := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Fprintln(os.Stderr)
+		if err != nil {
+			fail("Sharely couldn't read the password.")
+		}
+		if len(pw) == 0 {
+			fail("Password cannot be empty.")
+		}
+		return string(pw)
+	}
 	var pw string
-	fmt.Scanln(&pw)
+	if _, err := fmt.Scanln(&pw); err != nil || pw == "" {
+		fail("Password cannot be empty.")
+	}
 	return pw
 }
 
@@ -292,7 +367,58 @@ func targetOrCwd(t string) string {
 	return t
 }
 
-func runAsDaemon(f shareFlags) {
+// startDaemon launches the long-running server independently so `sharely
+// start` returns the prompt immediately and the share survives terminal exit.
+func startDaemon(f shareFlags) error {
+	exe, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("Sharely couldn't locate its executable: %w", err)
+	}
+	args := []string{daemonSubcommand}
+	if f.host != "" {
+		args = append(args, "--host", f.host)
+	}
+	if f.port != 0 {
+		args = append(args, "--port", strconv.Itoa(f.port))
+	}
+
+	dir, err := config.Dir()
+	if err != nil {
+		return fmt.Errorf("Sharely couldn't create its local state directory: %w", err)
+	}
+	logPath := filepath.Join(dir, "daemon.log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("Sharely couldn't open its daemon log: %w", err)
+	}
+	defer logFile.Close()
+
+	cmd := exec.Command(exe, args...)
+	cmd.Stdin = nil
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+	cmd.SysProcAttr = daemonProcessAttributes()
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("Sharely couldn't start in the background: %w", err)
+	}
+	pid := strconv.Itoa(cmd.Process.Pid)
+	_ = os.WriteFile(filepath.Join(dir, "daemon.pid"), []byte(pid+"\n"), 0o600)
+	_ = cmd.Process.Release()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if daemonReachable() {
+			return nil
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return fmt.Errorf("Sharely didn't finish starting. See %s", logPath)
+}
+
+func runDaemon(f shareFlags) {
+	if dir, err := config.Dir(); err == nil {
+		defer os.Remove(filepath.Join(dir, "daemon.pid"))
+	}
 	mgr := sharing.NewManager()
 
 	iface, err := network.ActiveLAN()
@@ -318,10 +444,10 @@ func runAsDaemon(f shareFlags) {
 	}
 	contentAddr := lanIP + ":" + strconv.Itoa(contentPort)
 
-	controlAddr, err := server.ResolveLoopback(config.ControlHost, config.ControlPortDefault)
-	if err != nil {
-		fail("Sharely couldn't start its control server.")
-	}
+	// Clients use this stable loopback endpoint. Do not silently move the
+	// daemon to another port: that would leave a healthy but undiscoverable
+	// background process behind when the preferred port is occupied.
+	controlAddr := net.JoinHostPort(config.ControlHost, strconv.Itoa(config.ControlPortDefault))
 
 	// Advertise "sharely.local" over mDNS, but only ever hand it to the user
 	// as the link's hostname once we've confirmed THIS machine can actually
@@ -374,97 +500,27 @@ func runAsDaemon(f shareFlags) {
 		DashboardDir:         dashboardDir,
 		LoopbackFallbackAddr: loopbackFallback,
 	}
+	shutdownRequested := make(chan struct{}, 1)
+	srv.OnShutdown = func() {
+		select {
+		case shutdownRequested <- struct{}{}:
+		default:
+		}
+	}
 	if err := srv.Start(); err != nil {
 		fail("Sharely couldn't start: " + err.Error())
-	}
-
-	resolved, rerr := sharing.Resolve(f.target)
-	if rerr != nil {
-		fail(rerr.Error())
-	}
-	password := clientPassword(f)
-	s, err := mgr.Create(sharing.CreateOptions{
-		TargetArg:     targetOrCwd(f.target),
-		RootDir:       resolved.RootDir,
-		EntryPoint:    resolved.EntryPoint,
-		Type:          resolved.Type,
-		ProxyUpstream: resolved.ProxyUpstream,
-		Duration:      sharing.Duration(f.expires),
-		Password:      password,
-	})
-	if err != nil {
-		fail(err.Error())
-	}
-
-	res := shareResult{
-		ID:          s.ID,
-		Name:        baseName(s.TargetArg),
-		Type:        string(s.Type),
-		URL:         "http://" + contentAddr + "/" + s.ID + "/",
-		PrimaryURL:  "http://" + contentAddr + "/" + s.ID + "/",
-		Remaining:   s.RemainingLabel(),
-		HasPassword: s.HasPassword,
-		Duration:    string(s.Duration),
-		NetworkAddr: contentAddr,
-	}
-	if localName != "" {
-		res.PrimaryURL = "http://" + localName + "/" + s.ID + "/"
-	}
-
-	// Actually fetch the link we're about to print — not just probe the
-	// socket — before calling it ready. If it doesn't come back cleanly,
-	// check the loopback listener, which always works on this machine
-	// regardless of LAN/firewall/container quirks, and offer it as a
-	// guaranteed-working backup instead of leaving the user with a link
-	// that looks fine but silently doesn't load.
-	primaryReachable := httpReachable(res.URL)
-	fallbackURL := ""
-	if !primaryReachable && loopbackFallback != "" {
-		candidate := "http://" + loopbackFallback + "/" + s.ID + "/"
-		if httpReachable(candidate) {
-			fallbackURL = candidate
-		}
-	}
-
-	printReady(f, res, primaryReachable, fallbackURL)
-	if !f.quiet {
-		fmt.Printf("\n  Dashboard   http://%s\n", controlAddr)
-	}
-	if f.verbose {
-		expiresLabel := "never (until stopped)"
-		if s.ExpiresAt != nil {
-			expiresLabel = s.ExpiresAt.Format("15:04:05 MST")
-		}
-		passwordLabel := "disabled"
-		if s.HasPassword {
-			passwordLabel = "enabled"
-		}
-		printVerboseDetails([][2]string{
-			{"Share ID", s.ID},
-			{"Type", string(s.Type)},
-			{"Root directory", s.RootDir},
-			{"Network", ifaceLabel},
-			{"Content address", contentAddr},
-			{"Control address", controlAddr},
-			{"Local hostname", nonEmpty(localName, "(unavailable, using LAN address)")},
-			{"Password", passwordLabel},
-			{"Expires", expiresLabel},
-		})
-	}
-	if f.open {
-		openBrowser(res.PrimaryURL)
 	}
 
 	// Block until interrupted, then clean up every share and both listeners.
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	<-sig
+	select {
+	case <-sig:
+	case <-shutdownRequested:
+	}
 	mdnsProc.Stop()
 	mgr.StopAll()
 	srv.Shutdown()
-	if !f.quiet {
-		fmt.Println("\nSharing stopped.")
-	}
 }
 
 func baseName(p string) string {
@@ -510,10 +566,16 @@ func printReady(f shareFlags, res shareResult, reachable bool, fallbackURL strin
 		fmt.Println(art)
 	}
 	fmt.Println("  Scan to open")
+	if host, _, ok := splitHostPortInt(res.NetworkAddr); ok && host == "127.0.0.1" {
+		fmt.Println()
+		fmt.Println("⚠ No local network was found. This share is only available on this computer.")
+		fmt.Println("  Connect to Wi-Fi or Ethernet, then run `sharely doctor`.")
+		return
+	}
 	if !reachable {
 		fmt.Println()
 		if fallbackURL != "" {
-			fmt.Println("⚠ That link isn't responding from other devices on this network.")
+			fmt.Println("⚠ Sharely couldn't verify the network link from this computer.")
 			fmt.Printf("  It works on this computer at:  %s\n", fallbackURL)
 			fmt.Println("  Run `sharely doctor` to check why other devices can't reach it.")
 		} else {
@@ -583,7 +645,7 @@ func findDashboardDir() string {
 	}
 	exe, err := os.Executable()
 	if err == nil {
-		candidates = append(candidates, exe+"/../web/dashboard/dist")
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), "..", "web", "dashboard", "dist"))
 	}
 	for _, c := range candidates {
 		if info, err := os.Stat(c); err == nil && info.IsDir() {

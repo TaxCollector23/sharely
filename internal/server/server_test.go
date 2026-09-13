@@ -150,3 +150,27 @@ func TestPasswordProtectedShareRequiresAuth(t *testing.T) {
 		t.Fatalf("expected 200 with valid session cookie, got %d", rr4.Code)
 	}
 }
+
+func TestShutdownRequiresJSONAndSignals(t *testing.T) {
+	called := make(chan struct{}, 1)
+	h := &APIHandler{Manager: sharing.NewManager(), Shutdown: func() { called <- struct{}{} }}
+
+	bad := httptest.NewRecorder()
+	h.Routes().ServeHTTP(bad, httptest.NewRequest(http.MethodPost, "/api/shutdown", nil))
+	if bad.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("expected 415 for a form-compatible request, got %d", bad.Code)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/shutdown", nil)
+	req.Header.Set("Content-Type", "application/json")
+	good := httptest.NewRecorder()
+	h.Routes().ServeHTTP(good, req)
+	if good.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", good.Code)
+	}
+	select {
+	case <-called:
+	case <-time.After(time.Second):
+		t.Fatal("shutdown callback was not called")
+	}
+}

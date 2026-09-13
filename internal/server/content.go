@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/TaxCollector23/sharely/internal/mimekind"
 	"github.com/TaxCollector23/sharely/internal/proxy"
@@ -23,7 +24,8 @@ type ContentHandler struct {
 	Manager *sharing.Manager
 	Quiet   bool
 
-	proxies map[string]http.Handler
+	proxiesMu sync.Mutex
+	proxies   map[string]http.Handler
 }
 
 func NewContentHandler(m *sharing.Manager, quiet bool) *ContentHandler {
@@ -153,16 +155,19 @@ func (h *ContentHandler) serveDirectory(w http.ResponseWriter, r *http.Request, 
 }
 
 func (h *ContentHandler) serveProxy(w http.ResponseWriter, r *http.Request, s *sharing.Share) {
+	h.proxiesMu.Lock()
 	p, ok := h.proxies[s.ID]
 	if !ok {
 		var err error
 		p, err = proxy.New(s.ProxyUpstream, h.Quiet)
 		if err != nil {
+			h.proxiesMu.Unlock()
 			writeHTML(w, http.StatusBadGateway, notFoundPage())
 			return
 		}
 		h.proxies[s.ID] = p
 	}
+	h.proxiesMu.Unlock()
 	// Strip the /<id> prefix so the upstream sees the path it expects.
 	r2 := r.Clone(r.Context())
 	r2.URL.Path = "/" + strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/"+s.ID), "/")

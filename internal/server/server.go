@@ -28,6 +28,7 @@ type Server struct {
 	IfaceLabel  string
 	Version     string
 	Quiet       bool
+	OnShutdown  func()
 
 	DashboardDir string // path to built dashboard static assets, if any
 
@@ -61,6 +62,7 @@ func (s *Server) Start() error {
 		Interface:   s.IfaceLabel,
 		StartedAt:   time.Now(),
 		Version:     s.Version,
+		Shutdown:    s.OnShutdown,
 	}
 
 	mux := http.NewServeMux()

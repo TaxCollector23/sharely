@@ -26,7 +26,7 @@ func execCommand(name string, args ...string) {
 }
 
 func apiGet(path string, out any) error {
-	client := http.Client{Timeout: 2 * time.Second}
+	client := localHTTPClient(2 * time.Second)
 	resp, err := client.Get(controlBaseURL() + path)
 	if err != nil {
 		return fmt.Errorf("not running")
@@ -43,7 +43,7 @@ func apiGet(path string, out any) error {
 }
 
 func apiPost(path string, body any, out any) error {
-	client := http.Client{Timeout: 2 * time.Second}
+	client := localHTTPClient(2 * time.Second)
 	var reader io.Reader
 	if body != nil {
 		data, _ := json.Marshal(body)
@@ -67,7 +67,7 @@ func apiPost(path string, body any, out any) error {
 }
 
 func apiDelete(path string, out any) error {
-	client := http.Client{Timeout: 2 * time.Second}
+	client := localHTTPClient(2 * time.Second)
 	req, _ := http.NewRequest(http.MethodDelete, controlBaseURL()+path, nil)
 	resp, err := client.Do(req)
 	if err != nil {
@@ -118,6 +118,15 @@ func runList() {
 	}
 }
 
+func runDashboard() {
+	if !daemonReachable() {
+		fail("Sharely isn't running. Start a share first with `sharely start`.")
+	}
+	url := controlBaseURL()
+	openBrowser(url)
+	fmt.Println("Opened " + url)
+}
+
 func truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
@@ -153,9 +162,11 @@ func runStopAll() {
 		}
 	}
 	if n == 0 {
+		apiPost("/api/shutdown", nil, nil)
 		fmt.Println("Nothing is being shared.")
 		return
 	}
+	apiPost("/api/shutdown", nil, nil)
 	fmt.Println("Sharing stopped.")
 }
 
@@ -179,7 +190,7 @@ func runLogs(id string) {
 		return
 	}
 	for _, l := range logs {
-		fmt.Printf("%s %-5s %s\n", l.Time.Format("15:04:05"), l.Method, l.Path)
+		fmt.Printf("%s  %-5s  %3d  %s\n", l.Time.Format("15:04:05"), l.Method, l.Status, l.Path)
 	}
 }
 
@@ -256,6 +267,8 @@ Usage:
   sharely start [path]     Share a folder (defaults to the current one)
   sharely [path]           Same thing — "start" is just the explicit form
   sharely list             See what's currently shared
+  sharely status           Alias for list
+  sharely dashboard        Open the local control center
   sharely qr <id>          Reprint the link and QR code for a share
   sharely stop <id>        Stop one share
   sharely stop-all         Stop everything
