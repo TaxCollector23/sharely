@@ -1,6 +1,6 @@
 # sharely-cli
 
-npm install wrapper for [Sharely](https://github.com/TaxCollector23/sharely) — share files, folders, and local sites over your network.
+Share files, folders, and local websites with people on the same Wi-Fi.
 
 ```bash
 npm install -g sharely-cli
@@ -8,20 +8,14 @@ cd my-project
 sharely start
 ```
 
-This package builds the real `sharely` binary from source at install time using the Go toolchain (Go 1.22+ required for now — a prebuilt-binary release that doesn't need Go is planned).
+Sharely prints a link and a QR code. The other person opens it in a browser—no account or app required. Shares stay on your local network and expire automatically.
 
-> **If `sharely` fails right after install** saying the binary wasn't built: recent npm versions block a package's install script by default on some setups, and this package's install script is what actually compiles the binary. Reinstall allowing it explicitly:
->
-> ```bash
-> npm install -g --allow-scripts=sharely-cli sharely-cli
-> ```
-
-See the [main repository](https://github.com/TaxCollector23/sharely) for full documentation, or install directly with Go instead — this path never depends on npm's script policy:
+This package builds the Sharely binary from source during installation, so Go 1.27+ is required for now. If your npm configuration blocks install scripts, allow this package's script and reinstall:
 
 ```bash
-go build -o sharely github.com/TaxCollector23/sharely/cmd/sharely
+npm install -g --allow-scripts=sharely-cli sharely-cli
 ```
 
-## License
+See the [main repository](https://github.com/TaxCollector23/sharely) for commands, privacy details, and support.
 
-MIT
+MIT License
