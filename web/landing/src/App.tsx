@@ -29,13 +29,12 @@ function App() {
         <nav aria-label="Main navigation">
           <a href="#why">Why Sharely</a><a href="#how">How it works</a><a href="#safety">Privacy</a>
         </nav>
-        <a className="nav-github" href={repo} target="_blank" rel="noreferrer">GitHub <span>↗</span></a>
       </header>
 
       <main id="top">
         <section className="hero wrap">
           <div className="hero-copy">
-            <h1>Share files<br /><em>with people nearby.</em></h1>
+            <h1>Sharing<br /><em>Made Simple.</em></h1>
             <p className="hero-lede">Run one command and get a link anyone on your Wi-Fi can open. Your files stay on your computer.</p>
             <div className="hero-actions">
               <a className="button button--dark" href="#install">Install Sharely <ArrowIcon /></a>
