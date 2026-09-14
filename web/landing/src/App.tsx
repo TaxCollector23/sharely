@@ -14,7 +14,20 @@ function CopyButton({ value, compact = false }: { value: string; compact?: boole
 }
 
 function Logo() {
-  return <span className="logo-mark" aria-hidden="true"><i /><i /><i /><svg viewBox="0 0 44 44"><path d="M14 22 28 13M14 22l14 9" /></svg></span>
+  return (
+    <svg width="40" height="40" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <rect x="1" y="1" width="62" height="62" rx="15" fill="#ffffff" stroke="#0a0a0a" strokeWidth="2" />
+      <rect x="16.5" y="34" width="3" height="3.5" fill="#0a0a0a" />
+      <rect x="11" y="38.5" width="14" height="2.5" rx="1.25" fill="#0a0a0a" />
+      <rect x="4" y="12" width="28" height="22" rx="3" stroke="#0a0a0a" strokeWidth="3" />
+      <rect x="11.5" y="17" width="6" height="4" rx="1.5" fill="#0a0a0a" />
+      <rect x="11.5" y="20" width="13" height="9" rx="1.6" fill="#0a0a0a" />
+      <rect x="36" y="8" width="24" height="48" rx="4" stroke="#0a0a0a" strokeWidth="3" />
+      <rect x="47" y="52" width="3" height="1.8" rx="0.9" fill="#0a0a0a" />
+      <rect x="41.5" y="23" width="6" height="4" rx="1.5" fill="#0a0a0a" />
+      <rect x="41.5" y="26" width="13" height="9.5" rx="1.6" fill="#0a0a0a" />
+    </svg>
+  )
 }
 
 function ArrowIcon() {
@@ -78,10 +91,10 @@ function App() {
         </div></section>
 
         <section className="privacy wrap" id="safety">
-          <div className="privacy-copy"><span className="section-number">03 / PRIVATE BY DESIGN</span><h2>Your files never take the scenic route.</h2><p>Sharely serves straight from your machine to devices on your local network. There’s no relay, upload queue, or tracking pixel in the middle.</p><a href={repo} target="_blank" rel="noreferrer" className="text-link">Inspect the source <span>↗</span></a></div>
+          <div className="privacy-copy"><span className="section-number">03 / PRIVATE BY DESIGN</span><h2>Your files never take the scenic route.</h2><p>Sharely serves straight from your machine to devices on your local network. There’s no relay, upload queue, or tracking pixel in the middle.</p><p className="privacy-note">For a <code>sharely.local</code> link, both devices need to be on the same network with multicast DNS (Bonjour / mDNS) allowed. Guest Wi‑Fi and strict firewalls can block it; Sharely automatically gives you the direct LAN address instead.</p><a href={repo} target="_blank" rel="noreferrer" className="text-link">Inspect the source <span>↗</span></a></div>
           <div className="privacy-list">
-            <div><span>01</span><b>Local network only</b><p>Nothing is exposed to the public internet.</p></div>
-            <div><span>02</span><b>Automatic expiry</b><p>Choose 15 minutes, 1 hour, 4 hours, or until stopped.</p></div>
+            <div><span>01</span><b>Friendly links need mDNS</b><p>Bonjour or mDNS plus UDP 5353 multicast must be allowed.</p></div>
+            <div><span>02</span><b>Local network only</b><p>Nothing is exposed to the public internet.</p></div>
             <div><span>03</span><b>Protected when needed</b><p>Add a password for busy or less-trusted networks.</p></div>
             <div><span>04</span><b>Sensitive files hidden</b><p>Keys, environment files, and Git metadata stay out of view.</p></div>
           </div>
