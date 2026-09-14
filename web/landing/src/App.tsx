@@ -26,9 +26,6 @@ function App() {
     <div className="site-shell">
       <header className="nav wrap">
         <a href="#top" className="brand"><Logo />Sharely</a>
-        <nav aria-label="Main navigation">
-          <a href="#why">Why Sharely</a><a href="#how">How it works</a><a href="#safety">Privacy</a>
-        </nav>
       </header>
 
       <main id="top">
