@@ -23,6 +23,7 @@ type Server struct {
 	Manager *sharing.Manager
 
 	ContentAddr string // e.g. "192.168.1.42:4821"
+	ContentHost string // advertised host:port used in links and API responses
 	ControlAddr string // e.g. "127.0.0.1:47732"
 	LocalName   string
 	IfaceLabel  string
@@ -57,7 +58,7 @@ func (s *Server) Start() error {
 
 	api := &APIHandler{
 		Manager:     s.Manager,
-		ContentHost: s.ContentAddr,
+		ContentHost: nonEmptyHost(s.ContentHost, s.ContentAddr),
 		LocalName:   s.LocalName,
 		Interface:   s.IfaceLabel,
 		StartedAt:   time.Now(),
@@ -72,22 +73,18 @@ func (s *Server) Start() error {
 
 	errCh := make(chan error, 3)
 	go func() {
-		if err := s.contentSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errCh <- err
-		}
+		serveTCP4(s.contentSrv, s.ContentAddr, errCh)
 	}()
 	if s.contentLoopbackSrv != nil {
 		go func() {
 			// Best-effort: if this address is somehow already taken, the
 			// LAN listener above is still the primary content server and
 			// Sharely keeps working — this is purely a fallback.
-			s.contentLoopbackSrv.ListenAndServe()
+			serveTCP4(s.contentLoopbackSrv, s.LoopbackFallbackAddr, errCh)
 		}()
 	}
 	go func() {
-		if err := s.controlSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errCh <- err
-		}
+		serveTCP4(s.controlSrv, s.ControlAddr, errCh)
 	}()
 
 	go s.sweep()
@@ -98,6 +95,28 @@ func (s *Server) Start() error {
 	case <-time.After(150 * time.Millisecond):
 		return nil
 	}
+}
+
+// serveTCP4 makes the transport explicit. On macOS, net/http may resolve a
+// wildcard TCP listener to IPv6 first; some local networks then accept an IPv4
+// connection and immediately reset it. Sharely advertises IPv4 LAN links, so
+// a TCP4 listener keeps the URL and the socket family aligned.
+func serveTCP4(srv *http.Server, addr string, errCh chan<- error) {
+	l, err := net.Listen("tcp4", addr)
+	if err != nil {
+		errCh <- err
+		return
+	}
+	if err := srv.Serve(l); err != nil && err != http.ErrServerClosed {
+		errCh <- err
+	}
+}
+
+func nonEmptyHost(preferred, fallback string) string {
+	if preferred != "" {
+		return preferred
+	}
+	return fallback
 }
 
 func (s *Server) sweep() {

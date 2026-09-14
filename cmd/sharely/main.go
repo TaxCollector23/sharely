@@ -442,7 +442,14 @@ func runDaemon(f shareFlags) {
 	if err != nil {
 		fail("Sharely couldn't open a network port. Try again or run `sharely doctor`.")
 	}
-	contentAddr := lanIP + ":" + strconv.Itoa(contentPort)
+	contentAddr := net.JoinHostPort(lanIP, strconv.Itoa(contentPort))
+	listenHost := lanIP
+	if f.host == "" && lanIP != "127.0.0.1" {
+		// Binding wildcard avoids interface-specific loopback quirks on macOS
+		// and still advertises the concrete LAN address to other devices.
+		listenHost = "0.0.0.0"
+	}
+	listenAddr := net.JoinHostPort(listenHost, strconv.Itoa(contentPort))
 
 	// Clients use this stable loopback endpoint. Do not silently move the
 	// daemon to another port: that would leave a healthy but undiscoverable
@@ -485,13 +492,14 @@ func runDaemon(f shareFlags) {
 	}
 
 	loopbackFallback := ""
-	if lanIP != "127.0.0.1" && lanIP != "localhost" {
+	if listenHost != "0.0.0.0" && lanIP != "127.0.0.1" && lanIP != "localhost" {
 		loopbackFallback = "127.0.0.1:" + strconv.Itoa(contentPort)
 	}
 
 	srv := &server.Server{
 		Manager:              mgr,
-		ContentAddr:          contentAddr,
+		ContentAddr:          listenAddr,
+		ContentHost:          contentAddr,
 		ControlAddr:          controlAddr,
 		LocalName:            localName,
 		IfaceLabel:           ifaceLabel,
