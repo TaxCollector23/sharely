@@ -22,13 +22,12 @@ import (
 	"github.com/TaxCollector23/sharely/internal/config"
 	"github.com/TaxCollector23/sharely/internal/discovery"
 	"github.com/TaxCollector23/sharely/internal/network"
-	"github.com/TaxCollector23/sharely/internal/qr"
 	"github.com/TaxCollector23/sharely/internal/server"
 	"github.com/TaxCollector23/sharely/internal/sharing"
 	"golang.org/x/term"
 )
 
-const version = "0.2.2"
+const version = "0.2.3"
 
 const daemonSubcommand = "__daemon"
 
@@ -548,12 +547,9 @@ func baseName(p string) string {
 }
 
 func printReady(f shareFlags, res shareResult, reachable bool, fallbackURL string) {
+	dashboardURL := "http://" + net.JoinHostPort(config.ControlHost, strconv.Itoa(config.ControlPortDefault))
 	if f.quiet {
-		if !reachable && fallbackURL != "" {
-			fmt.Println(fallbackURL)
-			return
-		}
-		fmt.Println(res.PrimaryURL)
+		fmt.Println(dashboardURL)
 		return
 	}
 	typeLabel := map[string]string{
@@ -565,19 +561,14 @@ func printReady(f shareFlags, res shareResult, reachable bool, fallbackURL strin
 	fmt.Println()
 	fmt.Printf("Sharing  %s\n\n", res.Name)
 	fmt.Printf("✓ Your %s is ready.\n\n", nonEmpty(typeLabel, "content"))
-	fmt.Printf("  Dashboard  http://%s\n", net.JoinHostPort(config.ControlHost, strconv.Itoa(config.ControlPortDefault)))
+	fmt.Printf("  %s\n", dashboardURL)
 	fmt.Println("  Open, copy, or scan your share from the dashboard.")
-	fmt.Printf("\n  Share link  %s\n\n", res.PrimaryURL)
+	fmt.Println()
 	fmt.Printf("  %s\n", res.Remaining)
 	if res.HasPassword {
 		fmt.Println("  Password protected")
 	}
 	fmt.Println()
-	art, err := qr.Terminal(res.PrimaryURL)
-	if err == nil {
-		fmt.Println(art)
-	}
-	fmt.Println("  Scan to open")
 	if host, _, ok := splitHostPortInt(res.NetworkAddr); ok && host == "127.0.0.1" {
 		fmt.Println()
 		fmt.Println("⚠ No local network was found. This share is only available on this computer.")
@@ -588,8 +579,7 @@ func printReady(f shareFlags, res shareResult, reachable bool, fallbackURL strin
 		fmt.Println()
 		if fallbackURL != "" {
 			fmt.Println("⚠ Sharely couldn't verify the network link from this computer.")
-			fmt.Printf("  It works on this computer at:  %s\n", fallbackURL)
-			fmt.Println("  Run `sharely doctor` to check why other devices can't reach it.")
+			fmt.Println("  Use the dashboard above to open it here, or run `sharely doctor`.")
 		} else {
 			fmt.Println("⚠ This link isn't responding. Run `sharely doctor` to check your network setup.")
 		}
