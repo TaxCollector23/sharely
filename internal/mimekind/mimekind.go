@@ -53,6 +53,14 @@ func Detect(name string) (mimeType string, category Category) {
 		return audioMime(ext), CategoryAudio
 	case videoExt[ext]:
 		return videoMime(ext), CategoryVideo
+	case ext == ".js" || ext == ".mjs":
+		return "text/javascript; charset=utf-8", CategoryText
+	case ext == ".css":
+		return "text/css; charset=utf-8", CategoryText
+	case ext == ".json" || ext == ".map":
+		return "application/json", CategoryText
+	case ext == ".wasm":
+		return "application/wasm", CategoryOther
 	case textExt[ext]:
 		return "text/plain; charset=utf-8", CategoryText
 	}

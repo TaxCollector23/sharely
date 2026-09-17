@@ -43,8 +43,69 @@ func TestServeDirectoryAndFile(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 	body, _ := io.ReadAll(rr.Result().Body)
-	if string(body) != "<h1>hi</h1>" {
+	if !strings.Contains(string(body), "<h1>hi</h1>") {
 		t.Fatalf("unexpected body: %s", body)
+	}
+}
+
+func TestWebsiteHTMLKeepsAssetsInsideSharePrefix(t *testing.T) {
+	h, m, dir := newTestHandler(t)
+	markup := `<!doctype html><html><head><link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js"></script><link href="//cdn.example.com/x.css"></head><body></body></html>`
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte(markup), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := m.Create(sharing.CreateOptions{TargetArg: dir, RootDir: dir, EntryPoint: "index.html", Type: sharing.TypeWebsite, Duration: sharing.Duration1Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/"+s.ID+"/", nil))
+	body := rr.Body.String()
+	if !strings.Contains(body, `href="/`+s.ID+`/assets/app.css"`) || !strings.Contains(body, `src="/`+s.ID+`/assets/app.js"`) {
+		t.Fatalf("root-relative assets were not scoped to the share: %s", body)
+	}
+	if !strings.Contains(body, `href="//cdn.example.com/x.css"`) {
+		t.Fatalf("protocol-relative URL was unexpectedly rewritten: %s", body)
+	}
+}
+
+func TestRootShareSelectionSupportsSPAAssets(t *testing.T) {
+	h, m, dir := newTestHandler(t)
+	if err := os.MkdirAll(filepath.Join(dir, "assets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "assets", "app.js"), []byte("document.body.dataset.ready='yes'"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := m.Create(sharing.CreateOptions{TargetArg: dir, RootDir: dir, EntryPoint: "index.html", Type: sharing.TypeWebsite, Duration: sharing.Duration1Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	page := httptest.NewRecorder()
+	h.ServeHTTP(page, httptest.NewRequest(http.MethodGet, "/?share="+s.ID, nil))
+	if page.Code != http.StatusOK || len(page.Result().Cookies()) == 0 {
+		t.Fatalf("expected selected share and cookie, got %d", page.Code)
+	}
+
+	assetReq := httptest.NewRequest(http.MethodGet, "/assets/app.js", nil)
+	assetReq.AddCookie(page.Result().Cookies()[0])
+	asset := httptest.NewRecorder()
+	h.ServeHTTP(asset, assetReq)
+	if asset.Code != http.StatusOK {
+		t.Fatalf("expected SPA asset through selected share, got %d", asset.Code)
+	}
+	if got := asset.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/javascript") {
+		t.Fatalf("unexpected JavaScript MIME type: %q", got)
+	}
+
+	routeReq := httptest.NewRequest(http.MethodGet, "/innovation", nil)
+	routeReq.AddCookie(page.Result().Cookies()[0])
+	route := httptest.NewRecorder()
+	h.ServeHTTP(route, routeReq)
+	if route.Code != http.StatusOK || !strings.Contains(route.Body.String(), "<h1>hi</h1>") {
+		t.Fatalf("expected SPA route to fall back to index, got %d: %s", route.Code, route.Body.String())
 	}
 }
 

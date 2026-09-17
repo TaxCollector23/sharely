@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/TaxCollector23/sharely/internal/proxy"
 	"github.com/TaxCollector23/sharely/internal/security"
 	"github.com/TaxCollector23/sharely/internal/sharing"
+	"golang.org/x/net/html"
 )
 
 // ContentHandler serves the LAN-facing side of Sharely: /<shareID>/<path>.
@@ -34,6 +36,24 @@ func NewContentHandler(m *sharing.Manager, quiet bool) *ContentHandler {
 
 func (h *ContentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	id, rest := splitShareID(r.URL.Path)
+	if selected := r.URL.Query().Get("share"); r.URL.Path == "/" && selected != "" {
+		id = selected
+		rest = "/"
+		http.SetCookie(w, &http.Cookie{
+			Name:     "sharely_selected",
+			Value:    selected,
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+	} else if _, exists := h.Manager.Get(id); !exists {
+		if cookie, err := r.Cookie("sharely_selected"); err == nil {
+			if _, selectedExists := h.Manager.Get(cookie.Value); selectedExists {
+				id = cookie.Value
+				rest = r.URL.Path
+			}
+		}
+	}
 	if id == "" {
 		writeHTML(w, http.StatusOK, landingPage())
 		return
@@ -71,7 +91,7 @@ func (h *ContentHandler) handleAuth(w http.ResponseWriter, r *http.Request, s *s
 		return
 	}
 	setAuthCookie(w, s)
-	http.Redirect(w, r, "/"+s.ID+"/", http.StatusSeeOther)
+	http.Redirect(w, r, "/?share="+url.QueryEscape(s.ID), http.StatusSeeOther)
 }
 
 func (h *ContentHandler) serveShareContent(w http.ResponseWriter, r *http.Request, s *sharing.Share, rest string) {
@@ -106,6 +126,13 @@ func (h *ContentHandler) serveShareContent(w http.ResponseWriter, r *http.Reques
 
 	info, err := os.Stat(full)
 	if err != nil {
+		if s.Type == sharing.TypeWebsite && r.Method == http.MethodGet && filepath.Ext(requestRel) == "" {
+			indexPath := filepath.Join(s.RootDir, nonEmptyEntryPoint(s.EntryPoint))
+			if fileExists(indexPath) {
+				h.serveWebsiteHTML(w, s, indexPath)
+				return
+			}
+		}
 		writeHTML(w, http.StatusNotFound, notFoundPage())
 		return
 	}
@@ -116,9 +143,20 @@ func (h *ContentHandler) serveShareContent(w http.ResponseWriter, r *http.Reques
 	}
 
 	mimeType, _ := mimekind.Detect(full)
+	if s.Type == sharing.TypeWebsite && (strings.EqualFold(filepath.Ext(full), ".html") || strings.EqualFold(filepath.Ext(full), ".htm")) {
+		h.serveWebsiteHTML(w, s, full)
+		return
+	}
 	w.Header().Set("Content-Type", mimeType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeFile(w, r, full)
+}
+
+func nonEmptyEntryPoint(entry string) string {
+	if entry != "" {
+		return entry
+	}
+	return "index.html"
 }
 
 func (h *ContentHandler) serveDirectory(w http.ResponseWriter, r *http.Request, s *sharing.Share, dirPath, requestRel string) {
@@ -131,16 +169,14 @@ func (h *ContentHandler) serveDirectory(w http.ResponseWriter, r *http.Request, 
 		// Directory shares with a detected index just serve it directly.
 		indexPath := filepath.Join(dirPath, "index.html")
 		if fileExists(indexPath) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			http.ServeFile(w, r, indexPath)
+			h.serveWebsiteHTML(w, s, indexPath)
 			return
 		}
 	}
 	if s.Type == sharing.TypeDirectory || s.Type == sharing.TypeWebsite {
 		indexPath := filepath.Join(dirPath, "index.html")
 		if fileExists(indexPath) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			http.ServeFile(w, r, indexPath)
+			h.serveWebsiteHTML(w, s, indexPath)
 			return
 		}
 	}
@@ -152,6 +188,47 @@ func (h *ContentHandler) serveDirectory(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	writeHTML(w, http.StatusOK, html)
+}
+
+// serveWebsiteHTML rewrites root-relative asset links so a built site can
+// live below Sharely's /<share-id>/ URL. Vite and similar tools commonly
+// emit /assets/app.js, which would otherwise escape the share prefix and
+// leave the page with only its HTML title and a blank body.
+func (h *ContentHandler) serveWebsiteHTML(w http.ResponseWriter, s *sharing.Share, path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		writeHTML(w, http.StatusNotFound, notFoundPage())
+		return
+	}
+	doc, err := html.Parse(bytes.NewReader(data))
+	if err != nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(data)
+		return
+	}
+	prefix := "/" + s.ID + "/"
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			for i := range n.Attr {
+				a := &n.Attr[i]
+				if a.Key != "src" && a.Key != "href" && a.Key != "action" && a.Key != "poster" {
+					continue
+				}
+				if strings.HasPrefix(a.Val, "/") && !strings.HasPrefix(a.Val, "//") {
+					a.Val = prefix + strings.TrimPrefix(a.Val, "/")
+				}
+			}
+		}
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
+		}
+	}
+	walk(doc)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := html.Render(w, doc); err != nil {
+		writeHTML(w, http.StatusInternalServerError, notFoundPage())
+	}
 }
 
 func (h *ContentHandler) serveProxy(w http.ResponseWriter, r *http.Request, s *sharing.Share) {

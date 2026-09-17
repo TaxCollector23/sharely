@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -26,7 +27,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.2.0"
+const version = "0.2.1"
 
 const daemonSubcommand = "__daemon"
 
@@ -261,7 +262,7 @@ func runAsClient(f shareFlags) {
 	fallbackURL := ""
 	if !reachable {
 		if _, port, ok := splitHostPortInt(res.NetworkAddr); ok {
-			candidate := "http://127.0.0.1:" + strconv.Itoa(port) + "/" + res.ID + "/"
+			candidate := "http://127.0.0.1:" + strconv.Itoa(port) + "/?share=" + url.QueryEscape(res.ID)
 			if httpReachable(candidate) {
 				fallbackURL = candidate
 			}
@@ -563,7 +564,9 @@ func printReady(f shareFlags, res shareResult, reachable bool, fallbackURL strin
 	fmt.Println()
 	fmt.Printf("Sharing  %s\n\n", res.Name)
 	fmt.Printf("✓ Your %s is ready.\n\n", nonEmpty(typeLabel, "content"))
-	fmt.Printf("  %s\n\n", res.PrimaryURL)
+	fmt.Printf("  Dashboard  http://%s\n", net.JoinHostPort(config.ControlHost, strconv.Itoa(config.ControlPortDefault)))
+	fmt.Println("  Open, copy, or scan your share from the dashboard.")
+	fmt.Printf("\n  Share link  %s\n\n", res.PrimaryURL)
 	fmt.Printf("  %s\n", res.Remaining)
 	if res.HasPassword {
 		fmt.Println("  Password protected")

@@ -65,10 +65,10 @@ func resolveFile(path string) (*ResolvedTarget, error) {
 }
 
 var siteEntryCandidates = []string{
-	"index.html",
-	filepath.Join("public", "index.html"),
 	filepath.Join("dist", "index.html"),
 	filepath.Join("build", "index.html"),
+	"index.html",
+	filepath.Join("public", "index.html"),
 }
 
 func resolveDir(dir string) (*ResolvedTarget, error) {

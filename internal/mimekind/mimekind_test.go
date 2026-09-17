@@ -24,3 +24,19 @@ func TestDetect(t *testing.T) {
 		}
 	}
 }
+
+func TestWebAssetMIMETypes(t *testing.T) {
+	cases := map[string]string{
+		"app.js":    "text/javascript; charset=utf-8",
+		"app.mjs":   "text/javascript; charset=utf-8",
+		"app.css":   "text/css; charset=utf-8",
+		"data.json": "application/json",
+		"app.wasm":  "application/wasm",
+	}
+	for name, want := range cases {
+		got, _ := Detect(name)
+		if got != want {
+			t.Errorf("Detect(%q) MIME = %q, want %q", name, got, want)
+		}
+	}
+}

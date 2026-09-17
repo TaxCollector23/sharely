@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -55,11 +56,10 @@ func (h *APIHandler) toDTO(s *sharing.Share) shareDTO {
 		v := la.Format(time.RFC3339)
 		last = &v
 	}
-	path := "/" + s.ID + "/"
-	lanURL := "http://" + h.ContentHost + path
+	lanURL := "http://" + h.ContentHost + "/?share=" + url.QueryEscape(s.ID)
 	primary := lanURL
 	if h.LocalName != "" {
-		primary = "http://" + h.LocalName + path
+		primary = "http://" + h.LocalName + "/?share=" + url.QueryEscape(s.ID)
 	}
 	return shareDTO{
 		ID:            s.ID,
