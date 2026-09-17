@@ -249,9 +249,12 @@ func TestFriendlyHostnameKeepsContentPort(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := &APIHandler{Manager: m, ContentHost: "10.0.0.8:4821", LocalName: "sharely.local"}
-	got := h.toDTO(s).PrimaryURL
+	got := h.primaryURL(s)
 	want := "http://sharely.local:4821/" + s.ID + "/"
 	if got != want {
 		t.Fatalf("friendly URL = %q, want %q", got, want)
+	}
+	if dtoURL := h.toDTO(s).PrimaryURL; dtoURL != got {
+		t.Fatalf("API URL = %q, QR target = %q", dtoURL, got)
 	}
 }

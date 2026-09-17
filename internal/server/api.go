@@ -59,14 +59,7 @@ func (h *APIHandler) toDTO(s *sharing.Share) shareDTO {
 	}
 	path := "/" + url.PathEscape(s.ID) + "/"
 	lanURL := "http://" + h.ContentHost + path
-	primary := lanURL
-	if h.LocalName != "" {
-		localHost := h.LocalName
-		if _, port, err := net.SplitHostPort(h.ContentHost); err == nil {
-			localHost = net.JoinHostPort(h.LocalName, port)
-		}
-		primary = "http://" + localHost + path
-	}
+	primary := h.primaryURL(s)
 	return shareDTO{
 		ID:            s.ID,
 		Name:          filepath.Base(s.TargetArg),
@@ -85,6 +78,21 @@ func (h *APIHandler) toDTO(s *sharing.Share) shareDTO {
 		NetworkAddr:   h.ContentHost,
 		LocalHostname: h.LocalName,
 	}
+}
+
+// primaryURL is the exact address shown, copied, and encoded into QR codes.
+// Keep this in one place: dropping the content port from the QR target makes
+// phones connect to port 80 even though Sharely is listening on (usually) 4821.
+func (h *APIHandler) primaryURL(s *sharing.Share) string {
+	path := "/" + url.PathEscape(s.ID) + "/"
+	host := h.ContentHost
+	if h.LocalName != "" {
+		host = h.LocalName
+		if _, port, err := net.SplitHostPort(h.ContentHost); err == nil {
+			host = net.JoinHostPort(h.LocalName, port)
+		}
+	}
+	return "http://" + host + path
 }
 
 func (h *APIHandler) Routes() http.Handler {
@@ -209,11 +217,7 @@ func (h *APIHandler) handleShareByID(w http.ResponseWriter, r *http.Request) {
 		s.SetExpiration(sharing.Duration(body.Duration))
 		writeJSON(w, http.StatusOK, h.toDTO(s))
 	case "qr.svg":
-		path := "/" + s.ID + "/"
-		target := "http://" + h.ContentHost + path
-		if h.LocalName != "" {
-			target = "http://" + h.LocalName + path
-		}
+		target := h.primaryURL(s)
 		svg, err := qr.SVG(target, 480)
 		if err != nil {
 			http.Error(w, "could not generate QR code", http.StatusInternalServerError)

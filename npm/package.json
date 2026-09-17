@@ -1,6 +1,6 @@
 {
   "name": "sharely-cli",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Share what's on your machine — a local-first CLI for sharing files, folders, and local sites over your network.",
   "keywords": [
     "cli",
