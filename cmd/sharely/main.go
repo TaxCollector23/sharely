@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,7 +28,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.2.1"
+const version = "0.2.2"
 
 const daemonSubcommand = "__daemon"
 
@@ -473,13 +474,13 @@ func runDaemon(f shareFlags) {
 	localName := ""
 	var mdnsProc *mdnsProcess
 	if ip := parseIP(lanIP); ip != nil {
-		if proc, err := startMDNSAdvertiser(lanIP); err == nil {
+		if proc, err := startMDNSAdvertiser(lanIP, contentPort); err == nil {
 			mdnsProc = proc
 			// Give the child a brief moment to bind before checking whether
 			// this machine can resolve it — startup is near-instant in
 			// practice, and Verify()'s own timeout absorbs the rest.
-			time.Sleep(100 * time.Millisecond)
-			if discovery.Verify() {
+			time.Sleep(700 * time.Millisecond)
+			if runtime.GOOS == "darwin" || discovery.Verify() {
 				localName = config.LocalHostname
 			}
 		}

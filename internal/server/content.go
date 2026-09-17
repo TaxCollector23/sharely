@@ -68,6 +68,17 @@ func (h *ContentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeHTML(w, http.StatusGone, expiredPage())
 		return
 	}
+	if s.Type == sharing.TypeWebsite && r.URL.Query().Get("share") == "" && (rest == "" || rest == "/") {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "sharely_selected",
+			Value:    s.ID,
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+		http.Redirect(w, r, "/?share="+url.QueryEscape(s.ID), http.StatusSeeOther)
+		return
+	}
 
 	if rest == "/_auth" && r.Method == http.MethodPost {
 		h.handleAuth(w, r, s)

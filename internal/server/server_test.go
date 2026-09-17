@@ -35,9 +35,14 @@ func TestServeDirectoryAndFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pretty := httptest.NewRecorder()
+	h.ServeHTTP(pretty, httptest.NewRequest(http.MethodGet, "/"+s.ID+"/", nil))
+	if pretty.Code != http.StatusSeeOther || pretty.Header().Get("Location") != "/?share="+s.ID {
+		t.Fatalf("expected friendly path to enter SPA root, got %d %q", pretty.Code, pretty.Header().Get("Location"))
+	}
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/"+s.ID+"/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?share="+s.ID, nil)
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
@@ -60,7 +65,7 @@ func TestWebsiteHTMLKeepsAssetsInsideSharePrefix(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/"+s.ID+"/", nil))
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/?share="+s.ID, nil))
 	body := rr.Body.String()
 	if !strings.Contains(body, `href="/`+s.ID+`/assets/app.css"`) || !strings.Contains(body, `src="/`+s.ID+`/assets/app.js"`) {
 		t.Fatalf("root-relative assets were not scoped to the share: %s", body)
@@ -134,7 +139,7 @@ func TestExpiredShareServesGone(t *testing.T) {
 	s.ExpiresAt = &past
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/"+s.ID+"/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?share="+s.ID, nil)
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusGone {
 		t.Fatalf("expected 410 Gone for expired share, got %d", rr.Code)
@@ -147,7 +152,7 @@ func TestStoppedShareIsUnreachable(t *testing.T) {
 	m.Stop(s.ID)
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/"+s.ID+"/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?share="+s.ID, nil)
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusGone {
 		t.Fatalf("expected 410 Gone for stopped share, got %d", rr.Code)
@@ -175,7 +180,7 @@ func TestPasswordProtectedShareRequiresAuth(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/"+s.ID+"/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?share="+s.ID, nil)
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401 without auth, got %d", rr.Code)
@@ -204,7 +209,7 @@ func TestPasswordProtectedShareRequiresAuth(t *testing.T) {
 	}
 
 	rr4 := httptest.NewRecorder()
-	req4 := httptest.NewRequest(http.MethodGet, "/"+s.ID+"/", nil)
+	req4 := httptest.NewRequest(http.MethodGet, "/?share="+s.ID, nil)
 	req4.AddCookie(cookies[0])
 	h.ServeHTTP(rr4, req4)
 	if rr4.Code != http.StatusOK {
@@ -233,5 +238,20 @@ func TestShutdownRequiresJSONAndSignals(t *testing.T) {
 	case <-called:
 	case <-time.After(time.Second):
 		t.Fatal("shutdown callback was not called")
+	}
+}
+
+func TestFriendlyHostnameKeepsContentPort(t *testing.T) {
+	m := sharing.NewManager()
+	dir := t.TempDir()
+	s, err := m.Create(sharing.CreateOptions{TargetArg: dir, RootDir: dir, Type: sharing.TypeDirectory, Duration: sharing.Duration1Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := &APIHandler{Manager: m, ContentHost: "10.0.0.8:4821", LocalName: "sharely.local"}
+	got := h.toDTO(s).PrimaryURL
+	want := "http://sharely.local:4821/" + s.ID + "/"
+	if got != want {
+		t.Fatalf("friendly URL = %q, want %q", got, want)
 	}
 }

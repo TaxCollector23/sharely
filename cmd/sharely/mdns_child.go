@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -91,7 +93,23 @@ func (m *mdnsProcess) Stop() {
 // returns a handle to stop it. Any failure to launch is non-fatal to the
 // caller — mDNS is always optional, LAN-IP sharing must keep working
 // regardless.
-func startMDNSAdvertiser(ip string) (*mdnsProcess, error) {
+func startMDNSAdvertiser(ip string, port int) (*mdnsProcess, error) {
+	if runtime.GOOS == "darwin" {
+		// macOS already ships a mature Bonjour responder. Registering through
+		// dns-sd is more compatible with Apple's own NSEC traffic than running
+		// a second user-space packet parser, and requires no installation or
+		// system-setting changes from the user.
+		cmd := exec.Command("/usr/bin/dns-sd", "-P", "Sharely", "_http._tcp", "local", strconv.Itoa(port), "sharely.local", ip)
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return nil, err
+		}
+		if err := cmd.Start(); err != nil {
+			return nil, err
+		}
+		return &mdnsProcess{cmd: cmd, stdin: stdin}, nil
+	}
+
 	exe, err := os.Executable()
 	if err != nil {
 		return nil, err
