@@ -98,6 +98,14 @@
 :root{--ink:#151613;--paper:#f4f1e8;--cream:#fffdf7;--acid:#c8f55a;--coral:#ff7a59;--muted:#67695f;--line:#c9c8bd}
 html,body,#root{min-height:100%;background:var(--paper);color:var(--ink)}
 body{font-family:Manrope,ui-sans-serif,system-ui,sans-serif}
+.text-foreground{color:var(--ink)!important}
+.text-muted-foreground{color:var(--muted)!important}
+.text-primary-foreground{color:var(--cream)!important}
+.bg-background{background:var(--paper)!important}
+.bg-card{background:var(--cream)!important}
+.border-border{border-color:var(--line)!important}
+.bg-primary{background:var(--ink)!important}
+.bg-muted,.bg-muted\/40,.bg-muted\/50{background:#ebe8de!important}
 .dashboard-main{max-width:1180px!important}
 .dashboard-logo{flex:none}
 .dashboard-hero{padding:72px 0 42px;border-bottom:1px solid var(--line)}
