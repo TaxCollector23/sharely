@@ -39,6 +39,15 @@ export function ShareCard({ share, onShowQr, onChanged }: ShareCardProps) {
 
   const TypeIcon = TYPE_ICONS[share.type] ?? File
   const low = isRunningLow(share.expiresAt)
+  const localUrl = (() => {
+    try {
+      const parsed = new URL(share.url)
+      parsed.hostname = '127.0.0.1'
+      return parsed.toString()
+    } catch {
+      return share.url
+    }
+  })()
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(share.primaryUrl)
@@ -135,9 +144,9 @@ export function ShareCard({ share, onShowQr, onChanged }: ShareCardProps) {
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button size="sm" className="gap-1.5" asChild>
-          <a href={share.primaryUrl} target="_blank" rel="noreferrer">
+          <a href={localUrl} target="_blank" rel="noreferrer">
             <ExternalLink className="size-3.5" aria-hidden="true" />
-            Open
+            Open here
           </a>
         </Button>
 

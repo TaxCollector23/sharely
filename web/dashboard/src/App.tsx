@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Share2 } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { EmptyState } from '@/components/EmptyState'
 import { ConnectionError } from '@/components/ConnectionError'
@@ -25,9 +24,12 @@ function App() {
         <header className="border-b border-border">
           <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
             <div className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <Share2 className="size-4" aria-hidden="true" />
-              </div>
+              <svg className="dashboard-logo" width="40" height="40" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <rect x="1" y="1" width="62" height="62" rx="15" fill="var(--cream)" stroke="var(--ink)" strokeWidth="2" />
+                <rect x="16.5" y="34" width="3" height="3.5" fill="var(--ink)" /><rect x="11" y="38.5" width="14" height="2.5" rx="1.25" fill="var(--ink)" />
+                <rect x="4" y="12" width="28" height="22" rx="3" stroke="var(--ink)" strokeWidth="3" /><rect x="11.5" y="17" width="6" height="4" rx="1.5" fill="var(--ink)" /><rect x="11.5" y="20" width="13" height="9" rx="1.6" fill="var(--ink)" />
+                <rect x="36" y="8" width="24" height="48" rx="4" stroke="var(--ink)" strokeWidth="3" /><rect x="47" y="52" width="3" height="1.8" rx=".9" fill="var(--ink)" /><rect x="41.5" y="23" width="6" height="4" rx="1.5" fill="var(--ink)" /><rect x="41.5" y="26" width="13" height="9.5" rx="1.6" fill="var(--ink)" />
+              </svg>
               <span className="text-[15px] font-semibold tracking-tight text-foreground">
                 Sharely
               </span>
@@ -56,7 +58,12 @@ function App() {
           </div>
         </header>
 
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
+        <main className="dashboard-main mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
+          <section className="dashboard-hero">
+            <span className="dashboard-kicker">LOCAL SHARING / CONTROL CENTER</span>
+            <h1>Sharing<br /><em>Made Simple.</em></h1>
+            <p>Manage the files and sites you’re sharing on your network.</p>
+          </section>
           {error && !shares ? (
             <ConnectionError onRetry={refresh} />
           ) : loading && !shares ? null : running.length === 0 ? (

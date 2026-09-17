@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -92,3 +93,23 @@
     }
   }
 }
+
+/* Sharely's dashboard uses the same warm, editorial system as the landing page. */
+:root{--ink:#151613;--paper:#f4f1e8;--cream:#fffdf7;--acid:#c8f55a;--coral:#ff7a59;--muted:#67695f;--line:#c9c8bd}
+html,body,#root{min-height:100%;background:var(--paper);color:var(--ink)}
+body{font-family:Manrope,ui-sans-serif,system-ui,sans-serif}
+.dashboard-main{max-width:1180px!important}
+.dashboard-logo{flex:none}
+.dashboard-hero{padding:72px 0 42px;border-bottom:1px solid var(--line)}
+.dashboard-kicker{display:block;color:var(--muted);font:500 11px 'DM Mono',ui-monospace,monospace;letter-spacing:.09em}
+.dashboard-hero h1{font-size:clamp(48px,7vw,78px);line-height:.96;letter-spacing:-.07em;margin:20px 0 20px;font-weight:800}
+.dashboard-hero h1 em{font-style:normal;color:var(--ink)}
+.dashboard-hero p{margin:0;color:var(--muted);font-size:17px;line-height:1.6}
+.dashboard-main section.py-6{padding-top:42px;padding-bottom:80px}
+.dashboard-main section.py-6>h1{font:500 11px 'DM Mono',ui-monospace,monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:20px}
+.dashboard-main li.rounded-lg{border:1px solid var(--ink);border-radius:0;background:var(--cream);padding:24px;box-shadow:6px 6px 0 var(--ink)}
+.dashboard-main li.rounded-lg code{font-family:'DM Mono',ui-monospace,monospace}
+.dashboard-main li.rounded-lg .bg-muted\/40{background:#f1eee4;border-color:var(--line);border-radius:0}
+.dashboard-main li.rounded-lg button{border-radius:0;font-weight:700}
+.dashboard-main li.rounded-lg button.bg-primary{background:var(--ink)}
+@media(max-width:600px){.dashboard-hero{padding:48px 0 30px}.dashboard-main li.rounded-lg{padding:18px;box-shadow:4px 4px 0 var(--ink)}}

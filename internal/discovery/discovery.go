@@ -5,6 +5,8 @@ package discovery
 
 import (
 	"context"
+	"io"
+	"log"
 	"net"
 	"time"
 
@@ -32,7 +34,14 @@ func (z *hostZone) Records(q dns.Question) []dns.RR {
 // shutdown func. It returns an error if the responder could not bind
 // (e.g. multicast blocked); callers should fall back to the LAN IP.
 func Advertise(ip net.IP) (stop func(), err error) {
-	server, err := mdns.NewServer(&mdns.Config{Zone: &hostZone{ip: ip}})
+	// Other Bonjour devices often send DNSSEC/NSEC records that older mDNS
+	// parsers cannot decode. The responder should remain best-effort and
+	// never flood Sharely's terminal with parser noise for packets it can
+	// safely ignore.
+	server, err := mdns.NewServer(&mdns.Config{
+		Zone:   &hostZone{ip: ip},
+		Logger: log.New(io.Discard, "", 0),
+	})
 	if err != nil {
 		return nil, err
 	}
